@@ -282,32 +282,111 @@ def exercise():
     plt.xticks(rotation=80)
     plt.show()
 
-    def adjustDfColumns(dfTrainTestPrep, dfScore):
-        trainTestColumns = list(dfTrainTestPrep.keys())
-        scoreColumns = list(dfScore.keys())
-        for i in range(0, len(trainTestColumns)):
-            columnFound = False
-            for j in range(0, len(scoreColumns)):
-                if (trainTestColumns[i] == scoreColumns[j]):
-                    columnFound = True
-                    break
-            # Add column and store zeros in every cell if
-            # not found.
-            if (not columnFound):
-                colName = trainTestColumns[i]
-                dfScore[colName] = 0
-        return dfScore
+    df_test = pd.read_csv(PATH + 'bike_conjoint_test.csv')
+    X_test = pd.get_dummies(df_test, columns=attributeNames)
+    y_test = df_test['Rank']
+    X_test = X_test.drop(['Rank'], axis=1)
 
-    df_test = pd.read_csv("../datasets/bike_conjoint_test.csv")
-    y_test = df_test[['Rank']]
-    X_test = df_test[attributeNames]
-    X_test = pd.get_dummies(X_test, columns=attributeNames)
-    X_columns = X.copy(True).drop(['const'], axis=1)
-    X_test = adjustDfColumns(X_columns, X_test)
-    print(X_test)
-    predictions = lr_model.predict(X_test.squeeze(np))
+    # add_constant() doesn't work if there is already a column with variance=0
+    # added 'has_constant' attribute as a result.
+    X_test = sm.add_constant(X_test, has_constant='add')
+
+    # Must add in this column since it does not exist in the data set.
+    # The model expects this column.
+    X_test['guards_Mudguards'] = 0
+
+    predictions = lr_model.predict(X_test.values)
     print(y_test.values)
     print(predictions)
 
 
-exercise()
+def predict_car():
+    import pandas as pd
+    import statsmodels.api as sm
+
+    PATH = "../datasets/"
+
+    # read in conjoint survey profiles with respondent ranks
+    df = pd.read_csv(PATH + 'CarRanking_train.csv')
+
+    # Show all columns of data frame.
+    pd.set_option('display.max_columns', None)
+    pd.set_option('display.width', 1000)
+    print(df)
+
+    # This peforms a weighted regression for ranking with string variables as
+    # levels.
+    # Column names are set so their letter case matches part of level name.
+    attributeNames = ['Safety', 'Fuel', 'Accessories']
+
+    y = df[['Rank']]
+    X = df[attributeNames]
+    X = pd.get_dummies(X, columns=attributeNames)
+    X = sm.add_constant(X)
+    print(X)
+
+    lr_model = sm.OLS(y, X).fit()
+    print(lr_model.summary())
+
+    counter = 0
+    levelNames = list(X.keys())  # Level names are taken directly from X column names.
+    levelNames.pop(0)  # Remove constant for intercept.
+    ranges = []
+
+    # Store all part-worth (utility) values in a list.
+    # The values are taken directly from the model coefficients.
+    utilities = list(lr_model.params)
+    utilities.pop(0)  # Removes the intercept value.
+
+    # Iterate through all attributes to create part-worths.
+    for attributeName in attributeNames:
+        partWorths = []
+
+        # Iterate through all levels.
+        for levelName in levelNames:
+            # If level name contains the attribute store the part worth.
+            if (attributeName in levelName):
+                partWorth = utilities[counter]  # Store corresponding model coefficient.
+                print(" :", levelName + ": " + str(partWorth))
+                partWorths.append(partWorth)
+                counter += 1
+
+        # Summarize utility range for the attribute.
+        partWorthRange = max(partWorths) - min(partWorths)
+        ranges.append(partWorthRange)
+
+    # Calculate relative importance scores for each attribute.
+    importances = []
+    for i in range(0, len(ranges)):
+        importance = 100 * ranges[i] / sum(ranges)
+        importances.append(importance)
+        print(attributeNames[i] + " importance: " + str(importance))
+
+    import matplotlib.pyplot as plt
+
+    # Show the importance of each attribute.
+    plt.bar(attributeNames, importances)
+    plt.title("Attribute Importance")
+    plt.show()
+
+    # Show user's preference for all levels.
+    plt.bar(levelNames, utilities)
+    plt.title("Level Part-Worths Representing a Person’s Preferences")
+    plt.xticks(rotation=80)
+    plt.show()
+
+    df_test = pd.read_csv(PATH + 'CarRanking_test.csv')
+    X_test = pd.get_dummies(df_test, columns=attributeNames)
+    y_test = df_test['Rank']
+    X_test = X_test.drop(['Rank'], axis=1)
+
+    # add_constant() doesn't work if there is already a column with variance=0
+    # added 'has_constant' attribute as a result.
+    X_test = sm.add_constant(X_test, has_constant='add')
+
+    predictions = lr_model.predict(X_test.values)
+    print(y_test.values)
+    print(predictions)
+
+
+predict_car()
