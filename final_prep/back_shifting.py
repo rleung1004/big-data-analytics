@@ -12,71 +12,30 @@ pd.options.mode.chained_assignment = None  # default='warn'
 
 ##################################################################
 # CONFIGURATION SECTION
-NUM_DAYS        = 1200
-NUM_TIME_STEPS  = 2
-TEST_DAYS       = 30
+NUM_TIME_STEPS  = 3
+TEST_DAYS       = 7
 ##################################################################
+PATH = "../datasets/"
+FILE = "mytime_series.csv"
+df = pd.read_csv(PATH + FILE)
 
-def getStock(stk, ttlDays):
-    numDays = int(ttlDays)
-    dt      = datetime.date.today()
-    dtPast  = dt + datetime.timedelta(days=-numDays)
-    df      = pdr.get_data_yahoo(stk,
-                                 start=datetime.datetime(dtPast.year, dtPast.month,
-                                                         dtPast.day),
-                                 end  =datetime.datetime(dt.year, dt.month, dt.day))
+
+def create_time_shift_columns(df, col_name, n):
+    df = df.copy(True)
+    for i in range(1, n + 1):
+        new_col_name = f"{col_name}_t-{i}"
+        df[new_col_name] = df[col_name].shift(periods=i)
+
     return df
 
-# Creates time shifted columns for as many time steps needed.
-def backShiftColumns(df, originalColName, numTimeSteps):
-    dfNew  = df[[originalColName]]
+df = create_time_shift_columns(df, "target", 3)
+df = create_time_shift_columns(df, "a", 3)
+df = df.dropna()
 
-    for i in range(1, numTimeSteps + 1):
-        newColName       = originalColName[0] + 't-' + str(i)
-        dfNew[newColName]= dfNew[originalColName].shift(periods=i)
-    return dfNew
+X = df[['a_t-1', 'target_t-1', 'target_t-3']]
+y = df['target']
 
-def prepareStockDf(stockSymbol, columns):
-    df = getStock(stockSymbol, NUM_DAYS)
-
-    # Create data frame with back shift columns for all features of interest.
-    mergedDf = pd.DataFrame()
-    for i in range(0, len(columns)):
-        backShiftedDf  = backShiftColumns(df, columns[i], NUM_TIME_STEPS)
-        if(i==0):
-            mergedDf = backShiftedDf
-        else:
-            mergedDf = mergedDf.merge(backShiftedDf, left_index=True,
-                                      right_index=True)
-
-    newColumns = list(mergedDf.keys())
-
-    # Append stock symbol to column names.
-    for i in range(0, len(newColumns)):
-        mergedDf.rename(columns={newColumns[i]: stockSymbol +
-                                                "_" + newColumns[i]}, inplace=True)
-
-    return mergedDf
-
-columns  = ['Open', 'Close']
-msftDf   = prepareStockDf('MSFT', columns)
-aaplDf   = prepareStockDf('AAPL', columns)
-mergedDf = msftDf.merge(aaplDf, left_index=True, right_index=True)
-mergedDf = mergedDf.dropna()
-print(mergedDf)
-
-import seaborn as sns
-
-corr = mergedDf.corr()
-plt.figure(figsize = (4,4))
-ax = sns.heatmap(corr[['MSFT_Open']],
-                 linewidth=0.5, vmin=-1,
-                 vmax=1, cmap="YlGnBu")
-plt.show()
-
-xfeatures = ['MSFT_Ct-1']
-X = mergedDf[xfeatures]
-y = mergedDf[['MSFT_Open']]
+print(df.tail())
 
 # Add intercept for OLS regression.
 import statsmodels.api       as sm
@@ -101,8 +60,5 @@ import numpy as np
 print('Root Mean Squared Error:',
       np.sqrt(metrics.mean_squared_error(y_test, predictions)))
 
-plt.plot(y_test, label='Actual', marker='o')
-plt.plot(predictions, label='Predicted', marker='o')
-plt.xticks(rotation=45)
-plt.legend(loc='best')
-plt.show()
+print("One day ahead prediction")
+print(1.5547*-21 + 1.0844*12 - 0.1785*-22 + 30.3605)

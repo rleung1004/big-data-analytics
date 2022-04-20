@@ -9,9 +9,9 @@ pd.set_option('display.width', 1000)
 
 # Load samples.
 PATH = '../datasets/'
-FILE = 'drugSales.csv'
+FILE = 'comp4949_secret_data.csv'
 df = pd.read_csv(PATH + FILE)
-samples = np.array(df[['value']])
+samples = np.array(df[['target']])
 
 
 # High p-values are preferred and low D scores (closer to 0)

@@ -3,7 +3,7 @@ import datetime
 
 import matplotlib.pyplot as plt
 PATH = "../datasets/"
-FILE = 'shampoo.csv'
+FILE = 'HydroConsumption.csv'
 df   = pd.read_csv(PATH + FILE, index_col=0)
 df.info()
 

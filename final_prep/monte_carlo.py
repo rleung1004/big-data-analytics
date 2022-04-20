@@ -1,8 +1,4 @@
-NUM_SIMULATIONS = 500
-
-# Define revenue, fixed and variable cost parameters.
-CUSTOMERS_EXPECTED = 23
-CUSTOMERS_SD = 7
+NUM_SIMULATIONS = 100
 
 # Generate random numbers from a normal distribution.
 from scipy.stats import norm
@@ -12,27 +8,36 @@ def generateRandomNumbers(mean, standardDev):
                           size=NUM_SIMULATIONS)
     return randomNums
 
-customers = generateRandomNumbers(CUSTOMERS_EXPECTED, CUSTOMERS_SD)
+revenue = generateRandomNumbers(234000, 18000)
+rental = generateRandomNumbers(65000, 0)
+labour = generateRandomNumbers(50000, 20000)
+expense = generateRandomNumbers(110000, 15000)
 
 import pandas as pd
-df = pd.DataFrame(columns=['Customers'])
+df = pd.DataFrame(columns=['Revenue', 'Rental', 'Labour', 'Expenses'])
 
 for i in range(0, NUM_SIMULATIONS):
-    dictionary = {'Customers': round(customers[i])}
+    dictionary = {
+        'Revenue': round(revenue[i]),
+        'Rental': round(rental[i]),
+        'Labour': round(labour[i]),
+        'Expenses': round(expense[i]),
+        'Net': round(revenue[i]) - round(rental[i]) - round(labour[i]) - round(expense[i])
+    }
     df = df.append(dictionary, ignore_index=True)
 
 # Show the data frame which contains results from
-# all 500 trials.
+# all 100 trials.
 print(df)
 
 # Calculate profit summaries.
-print("Customers Mean: " + str(df['Customers'].mean()))
-print("Customers SD:   " + str(df['Customers'].std()))
-print("Customers Min:  " + str(df['Customers'].min()))
-print("Customers Max:  " + str(df['Customers'].max()))
+print("Net Mean: " + str(df['Net'].mean()))
+print("Net SD:   " + str(df['Net'].std()))
+print("Net Min:  " + str(df['Net'].min()))
+print("Net Max:  " + str(df['Net'].max()))
 
 # Calculate the risk of incurring a loss.
-dfLoss = df[(df['Customers'] > 30)]
-totalLosses = dfLoss['Customers'].count()
+dfLoss = df[(df['Net'] < 0)]
+totalLosses = dfLoss['Net'].count()
 riskOfLoss = totalLosses / NUM_SIMULATIONS
 print("Risk of loss: " + str(riskOfLoss))
